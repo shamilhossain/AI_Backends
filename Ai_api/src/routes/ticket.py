@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from openai import OpenAI
+from pydantic import ValidationError
 from src.llm.schema import TicketInput, TicketAnalysisOutput, TicketCategory, UrgencyLevel
 
 router = APIRouter()
@@ -10,6 +11,7 @@ router = APIRouter()
 # Read the system prompt
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 PROMPT_PATH = BASE_DIR / "prompts" / "triage-v1.md"
+LOGS_DIR = BASE_DIR / "logs"
 
 with open(PROMPT_PATH, "r") as f:
     SYSTEM_PROMPT = f.read()
@@ -34,22 +36,50 @@ async def triage_ticket(ticket: TicketInput):
             confidence=0.95
         )
     
-    try:
-        response = client.chat.completions.create(
+    # First LLM call
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": ticket.text}
+    ]
+    
+    def call_llm(msgs):
+        res = client.chat.completions.create(
             model=os.environ.get("LLM_MODEL", "gpt-3.5-turbo"),
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": ticket.text}
-            ],
+            messages=msgs,
             temperature=0.2
         )
+        return res.choices[0].message.content
         
-        response_text = response.choices[0].message.content
-        parsed_response = json.loads(response_text)
+    try:
+        raw_text = call_llm(messages)
+        # Parse & Validate
+        return TicketAnalysisOutput.model_validate_json(raw_text)
+    except (ValidationError, json.JSONDecodeError) as e:
+        error_details = str(e)
+        broken_output = raw_text
         
-        return parsed_response
+        # Repair Once
+        messages.append({"role": "assistant", "content": broken_output})
+        messages.append({
+            "role": "user", 
+            "content": f"Your previous answer was rejected for this reason: {error_details}. Return only corrected JSON matching the schema."
+        })
         
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse LLM response as JSON.")
+        try:
+            raw_text_2 = call_llm(messages)
+            return TicketAnalysisOutput.model_validate_json(raw_text_2)
+        except (ValidationError, json.JSONDecodeError) as e2:
+            # Quarantine & 422
+            quarantine_file = LOGS_DIR / "quarantine.jsonl"
+            quarantine_data = {
+                "ticket_text": ticket.text,
+                "broken_output": raw_text_2,
+                "error": str(e2)
+            }
+            with open(quarantine_file, "a") as qf:
+                qf.write(json.dumps(quarantine_data) + "\n")
+            
+            raise HTTPException(status_code=422, detail="Unprocessable Entity: Invalid LLM response")
     except Exception as e:
+        # Catch other exceptions like API connectivity issues
         raise HTTPException(status_code=500, detail=str(e))
