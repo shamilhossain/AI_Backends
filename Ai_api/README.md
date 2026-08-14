@@ -100,4 +100,4 @@ Estimated cost for 10,000 requests: [Calculation pending execution logging analy
 **What I'd fix with another day:**
 Right now, when you send a message, the API forces you to wait until the AI finishes thinking before it replies. If thousands of people send messages at the exact same time, the system could slow down or time out. With another day, I would implement "background task processing" using tools like Celery or Redis. This way, the API would instantly give you a "Ticket Received!" receipt, and the AI would process the heavy thinking in the background.
 
-[LLM Backend API Documentation](./LLM_Backend_API_Documentation.pdf)
+For a detailed, beginner-friendly explanation of the architecture, file structure, and real-world applications of this API, please read the [LLM Backend API Documentation](./LLM_Backend_API_Documentation.pdf) included in this repository.
