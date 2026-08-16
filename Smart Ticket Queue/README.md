@@ -81,3 +81,9 @@ You will get a response with a `job_id`. Copy that ID and run this command to se
 ```bash
 curl -X GET "http://127.0.0.1:8000/api/v1/status/YOUR_JOB_ID_HERE"
 ```
+
+---
+
+## 📚 More Details
+For a deeper dive into this project, you can check out the full detailed guide here:
+📄 **[Smart Ticket Queue Book](./Smart_Ticket_Queue_Book.pdf)**
