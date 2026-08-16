@@ -59,7 +59,21 @@ Here is a breakdown of every file we created and why it exists:
 
 ## 🚀 How to Test it Yourself
 
-Open a terminal and run this command to submit a ticket:
+### 1. Start the Servers
+Before you can test the API, you need to have two terminal windows open running our servers. Make sure you are in the project folder!
+
+**Terminal 1 (Start FastAPI):**
+```bash
+uvicorn src.main:app --reload
+```
+
+**Terminal 2 (Start Celery Worker):**
+```bash
+.venv/bin/celery -A src.worker.celery_app worker --loglevel=info
+```
+
+### 2. Test the API
+Open a third terminal window and run this command to submit a ticket:
 ```bash
 curl -X POST "http://127.0.0.1:8000/api/v1/triage" -H "Content-Type: application/json" -d '{"ticket_text": "I was charged twice for my plan!"}'
 ```
