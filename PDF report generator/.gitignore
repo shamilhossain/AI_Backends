@@ -2,3 +2,4 @@
 report.db
 __pycache__/
 *.pyc
+reports/

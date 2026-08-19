@@ -41,12 +41,20 @@ def get_report_data():
             for row in cursor.fetchall()
         ]
         
+        # 5. All Orders
+        cursor.execute("SELECT id, customer, product, amount, created_at FROM orders ORDER BY created_at DESC")
+        all_orders = [
+            {"id": row[0], "customer": row[1], "product": row[2], "amount": row[3], "date": row[4]}
+            for row in cursor.fetchall()
+        ]
+        
         # Return the aggregated dictionary
         return {
             "total_orders": total_orders,
             "total_revenue": round(total_revenue, 2),
             "top_products": top_products,
-            "recent_sales": recent_sales
+            "recent_sales": recent_sales,
+            "all_orders": all_orders
         }
     
     finally:
