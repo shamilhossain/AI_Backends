@@ -1,10 +1,15 @@
 import os
 import sqlite3
-from fastapi import FastAPI, HTTPException, status
+from typing import Optional
+from fastapi import FastAPI, HTTPException, status, Response
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from report_generator import generate_pdf
 
 app = FastAPI()
+
+class ReportRequest(BaseModel):
+    force: Optional[bool] = False
 
 # Startup event to create the reports table
 @app.on_event("startup")
@@ -26,9 +31,28 @@ def health_check():
     return {"status": "ok"}
 
 @app.post("/reports", status_code=status.HTTP_201_CREATED)
-async def create_report():
+async def create_report(response: Response, request: Optional[ReportRequest] = None):
+    force = request.force if request else False
+    
     conn = sqlite3.connect("report.db")
     cursor = conn.cursor()
+    
+    if not force:
+        # Check if a report was already generated today
+        # Both CURRENT_TIMESTAMP and 'now' use UTC, keeping this consistent
+        cursor.execute("""
+            SELECT id FROM reports 
+            WHERE date(created_at) = date('now') 
+            ORDER BY created_at DESC LIMIT 1
+        """)
+        existing_report = cursor.fetchone()
+        
+        if existing_report:
+            conn.close()
+            # Return 200 OK with the existing report details
+            response.status_code = status.HTTP_200_OK
+            report_id = existing_report[0]
+            return {"id": report_id, "file": f"/reports/{report_id}/file"}
     
     # Insert a placeholder row to get the new auto-incremented ID
     cursor.execute("INSERT INTO reports (path) VALUES ('')")
