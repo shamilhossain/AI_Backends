@@ -70,11 +70,4 @@ When the request takes too long (e.g., for heavy, complex reports), we risk keep
 The idempotency check protects against wasted server resources and duplicate file generation if a user double-clicks the "Generate" button or re-submits the exact same request. 
 *Real-world example:* A user clicks "Send Monthly Report Email" twice by accident due to lag. An idempotency check ensures we never send that report email to a customer twice, protecting against spam and redundant database reads/PDF generations.
 
----
 
-> **[PLACEHOLDER: Please add a screenshot of the generated PDF here]**
-
----
-
-### Detailed Documentation
-[Download the Complete Guide (PDF)](documentation.pdf)
