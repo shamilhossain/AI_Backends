@@ -4,7 +4,7 @@ from datetime import datetime
 from playwright.async_api import async_playwright
 from report_data import get_report_data
 
-async def generate_pdf():
+async def generate_pdf(pdf_path: str = "reports/test.pdf"):
     # 1. Fetch the data
     data = get_report_data()
     today_str = datetime.now().strftime("%B %d, %Y")
@@ -119,7 +119,6 @@ async def generate_pdf():
         await page.set_content(html_content)
         
         # Save as PDF
-        pdf_path = "reports/test.pdf"
         await page.pdf(
             path=pdf_path,
             format="A4",
