@@ -11,13 +11,13 @@ app = FastAPI(title="AI Decision Flow API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-inngest_client = inngest.Inngest(app_id="ai-decision-flow")
+inngest_client = inngest.Inngest(app_id="ai-decision-flow", event_key="test")
 
 # 3. Create a dummy function mimicking an AI agent
 def run_antigravity_agent(prompt: str) -> str:
