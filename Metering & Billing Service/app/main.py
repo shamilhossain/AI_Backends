@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from . import models, schemas, stripe_service
+from . import models, schemas, stripe_service, services
 from .database import engine, get_db
 
 # Ensure all database tables are created on startup
@@ -162,3 +162,49 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         db.commit()
 
     return {"status": "success"}
+
+
+@app.get("/api/usage/{tenant_id}")
+def get_usage(tenant_id: int, db: Session = Depends(get_db)):
+    # 1. Fetch the tenant's plan via their active subscription
+    plan = db.query(models.Plan).join(models.Subscription).filter(
+        models.Subscription.tenant_id == tenant_id
+    ).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail="Tenant plan not found")
+
+    # 2. Aggregate all API calls
+    api_calls_used = db.query(func.sum(models.UsageEvent.quantity)).filter(
+        models.UsageEvent.tenant_id == tenant_id,
+        models.UsageEvent.event_type == "api_call"
+    ).scalar() or 0
+
+    # 3. Aggregate all AI tokens
+    ai_tokens_used = db.query(func.sum(models.UsageEvent.quantity)).filter(
+        models.UsageEvent.tenant_id == tenant_id,
+        models.UsageEvent.event_type == "ai_token"
+    ).scalar() or 0
+
+    # 4. Calculate Total Cost using the calculate_ai_cost function
+    # Assuming the currently logged tokens are all standard input for this endpoint demo
+    total_cost_micro_cents = services.calculate_ai_cost(
+        input_tokens=ai_tokens_used,
+        cached_input_tokens=0,
+        output_tokens=0,
+        reasoning_tokens=0
+    )
+
+    # Return total usage, plan limits, and total calculated cost
+    return {
+        "tenant_id": tenant_id,
+        "plan_limits": {
+            "api_call_limit": plan.api_call_limit,
+            "ai_token_limit": plan.ai_token_limit
+        },
+        "usage": {
+            "api_calls_used": api_calls_used,
+            "ai_tokens_used": ai_tokens_used
+        },
+        "total_cost_micro_cents": total_cost_micro_cents
+    }
